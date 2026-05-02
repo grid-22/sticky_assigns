@@ -42,10 +42,11 @@ def mount(_params, _session, socket) do
 end
 ```
 
-In your LiveComponent's `update/2`, declare which assigns are sticky and their defaults:
+In your LiveComponent's `update/2`, declare which assigns are sticky on the *first* call (when `:id` has arrived but isn't yet in `socket.assigns`). A second clause handles subsequent calls:
 
 ```elixir
-def update(%{id: id} = assigns, socket) do
+def update(%{id: id} = assigns, socket)
+    when not is_map_key(socket.assigns, :id) do
   socket =
     socket
     |> StickyAssigns.recover(id, tab: :general, expanded: false)
@@ -53,7 +54,11 @@ def update(%{id: id} = assigns, socket) do
 
   {:ok, socket}
 end
+
+def update(assigns, socket), do: {:ok, assign(socket, assigns)}
 ```
+
+Defaults are recorded on the *first* call for a given component; subsequent calls to `recover/3` are no-ops and silently ignore their `defaults` argument. The guard above makes that lifetime explicit.
 
 In the same LC's `render/1`, write back any changes:
 

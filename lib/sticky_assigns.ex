@@ -40,11 +40,13 @@ defmodule StickyAssigns do
         {:ok, StickyAssigns.mount(socket)}
       end
 
-  In your LiveComponent's `update/2` (the *first* time through, before
-  `:id` is in assigns), declare which assigns are sticky and their
-  defaults:
+  In your LiveComponent's `update/2`, declare which assigns are sticky
+  on the *first* call (when `:id` has arrived in the incoming assigns
+  but is not yet in `socket.assigns`). A second `update/2` clause
+  handles every subsequent call:
 
-      def update(%{id: id} = assigns, socket) do
+      def update(%{id: id} = assigns, socket)
+          when not is_map_key(socket.assigns, :id) do
         socket =
           socket
           |> StickyAssigns.recover(id, tab: :general, expanded: false)
@@ -52,6 +54,13 @@ defmodule StickyAssigns do
 
         {:ok, socket}
       end
+
+      def update(assigns, socket), do: {:ok, assign(socket, assigns)}
+
+  Defaults are recorded on the **first** call for a given component;
+  subsequent calls to `recover/3` are no-ops and silently ignore their
+  `defaults` argument. The guard above makes that lifetime explicit
+  and avoids the surprise.
 
   In the same LC's `render/1`, call `preserve/1` to write back any
   changes:
@@ -161,10 +170,12 @@ defmodule StickyAssigns do
   Declare which assigns are sticky (with their defaults) and recover any
   saved state.
 
-  Call from your LiveComponent's `update/2`, on the first pass through
-  (when `:id` is not yet in assigns):
+  Intended to be called **once** per component, on the first `update/2`
+  call — i.e. when `:id` has arrived in the incoming assigns but is
+  not yet in `socket.assigns`. Use a guard to enforce this:
 
-      def update(%{id: id} = assigns, socket) do
+      def update(%{id: id} = assigns, socket)
+          when not is_map_key(socket.assigns, :id) do
         socket =
           socket
           |> StickyAssigns.recover(id, tab: :general, expanded: false)
@@ -173,10 +184,16 @@ defmodule StickyAssigns do
         {:ok, socket}
       end
 
+      def update(assigns, socket), do: {:ok, assign(socket, assigns)}
+
   The defaults define the *shape* of the sticky state — only these keys
-  are persisted, even if the assigns map contains others. Subsequent
-  calls to `recover/3` for the same component (with `:id` already in
-  assigns) are no-ops aside from a sanity check that the id matches.
+  are persisted, even if the assigns map contains others.
+
+  Calls to `recover/3` after `:id` is already in `socket.assigns` are
+  no-ops (with a `MatchError` if the id doesn't match) and **silently
+  ignore their `defaults` argument**. If you compute defaults from
+  incoming assigns, the guard pattern above is required — without it,
+  later updates with different computed defaults are dropped.
 
   Raises `RuntimeError` if `mount/1` was not called from the LiveView.
   """
