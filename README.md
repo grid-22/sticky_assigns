@@ -2,7 +2,9 @@
 
 **LiveComponent assigns that stick across remounts.**
 
-When a Phoenix LiveView's WebSocket drops and reconnects, the LV process is destroyed and a fresh one mounts in its place. By default, all in-process state — including LiveComponent assigns like "which tab is open" or "what's typed into this dialog" — is lost. For transient-but-meaningful UI state, that loss is jarring.
+**WARNING: Recently extracted from large app, work in progress**
+
+When a Phoenix LiveView's WebSocket drops and reconnects, the LV process is destroyed and a fresh one mounts in its place. By default, all in-process state — including LiveComponent assigns like "which tab is open" or "what activity is currently selected" — is lost. For transient-but-meaningful UI state, that loss is jarring.  Encoding on the URL gets messy, and interferes with links.  This is a simple approach to capture some UX state that you don't want in your URL nor in your database.
 
 StickyAssigns lets you declare specific LC assigns as *sticky*. They survive a remount within the same mount session (dropped-connection recovery) but are deliberately discarded on refresh, navigation, or any hard reset — those are user-initiated and should clear transient state.
 
@@ -10,9 +12,10 @@ StickyAssigns lets you declare specific LC assigns as *sticky*. They survive a r
 
 - Not for persistent (database-backed) data — use the URL or your context modules.
 - Not for cross-session state — that belongs in the database.
-- Not a replacement for forms with proper validation/errors.
+- Not a replacement for forms recovery.
 
-StickyAssigns is for *transient state that should survive a network blip*. Nothing more.
+StickyAssigns is for *transient state that should survive a remount*.
+Eventually, might be extended to hold for the user's current session on this browser.
 
 ## Installation
 
